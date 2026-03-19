@@ -84,48 +84,57 @@ def type_text(text: str, wpm: int, error_rate: float, countdown: int = 3) -> Non
     print("Go!\n")
 
     i = 0
+    error_cooldown = 0
+
+    # Burst state
+    burst_speed = 1.0        # current speed multiplier (1.0 = exact wpm)
+    burst_remaining = 0      # chars left in this burst
+
     while i < len(text):
         ch = text[i]
 
-        if ch.isalpha() and random.random() < error_rate:
-            typo_type = random.choice(['adjacent', 'double', 'swap'])
+        if burst_remaining <= 0: #newburst
+            # multiplier between ~0.75x and ~1.25x, gaussian centered at 1.0
+            burst_speed = max(0.6, min(1.5, random.gauss(1.0, 0.12)))
+            burst_remaining = random.randint(8, 20)
+
+        burst_remaining -= 1
+
+        # ── Typo injection ───────────────────────────────────────────────────
+        if ch.isalpha() and error_cooldown == 0 and random.random() < error_rate:
+            typo_type = random.choice(['adjacent', 'swap'])
+            min_delay = max(base_delay, 0.05)
 
             if typo_type == 'adjacent':
                 send_char(adjacent_char(ch))
-                time.sleep(base_delay * random.uniform(0.8, 1.4))
+                time.sleep(min_delay * burst_speed * random.uniform(0.8, 1.4))
                 send_backspace()
-                time.sleep(base_delay * random.uniform(0.9, 1.8))
-
-            elif typo_type == 'double' and i + 1 < len(text):
-                send_char(ch)
-                time.sleep(base_delay * random.uniform(0.5, 0.9))
-                send_char(ch)
-                time.sleep(base_delay * random.uniform(0.8, 1.5))
-                send_backspace()
-                time.sleep(base_delay * random.uniform(0.9, 1.6))
+                time.sleep(min_delay * burst_speed * random.uniform(0.9, 1.8))
+                error_cooldown = random.randint(3, 8)
 
             elif typo_type == 'swap' and i + 1 < len(text):
                 next_ch = text[i + 1]
                 send_char(next_ch)
-                time.sleep(base_delay * random.uniform(0.5, 0.9))
+                time.sleep(min_delay * burst_speed * random.uniform(0.5, 0.9))
                 send_char(ch)
-                time.sleep(base_delay * random.uniform(1.0, 2.0))
+                time.sleep(min_delay * burst_speed * random.uniform(1.0, 2.0))
                 send_backspace()
-                time.sleep(base_delay * 0.4)
+                time.sleep(min_delay * burst_speed * 0.4)
                 send_backspace()
-                time.sleep(base_delay * random.uniform(1.0, 1.8))
-
-        # right char
+                time.sleep(min_delay * burst_speed * random.uniform(1.0, 1.8))
+                error_cooldown = random.randint(3, 8)
+        elif error_cooldown > 0:
+            error_cooldown -= 1
         send_char(ch)
 
         if ch in ' \n':
-            delay = base_delay * random.uniform(0.8, 2.0)
+            delay = base_delay * burst_speed * random.uniform(0.8, 2.0)
         elif ch in '.,!?;:':
-            delay = base_delay * random.uniform(1.2, 2.5)
+            delay = base_delay * burst_speed * random.uniform(1.2, 2.5)
         else:
-            delay = base_delay * random.uniform(0.4, 1.6)
+            delay = base_delay * burst_speed * random.uniform(0.4, 1.6)
 
-        if random.random() < 0.01:          # occasional thinking pause
+        if random.random() < 0.01:
             delay += random.uniform(0.3, 1.2)
 
         time.sleep(delay)
