@@ -21,6 +21,9 @@ import shutil
 import subprocess
 import time
 import sys
+import tty
+import termios
+import os
 OS = platform.system()
 def detect_backend() -> str:
     if OS == 'Darwin':
@@ -210,6 +213,10 @@ def prompt_float(msg: str, default: float, lo: float, hi: float) -> float:
             print("    x Please enter a number.")
 
 def main():
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    tty.setcbreak(fd)
+    termios.tcsetattr(fd, termios.TCSADRAIN, old)
     print("━" * 50)
     print("  humantype -- human-like autotyper")
     print("━" * 50)
