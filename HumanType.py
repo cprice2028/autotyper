@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-humantype.py — Types text for you with realistic speed and typos.
-Wayland-native via ydotool (recommended) or xdotool fallback.
-
-Setup:
-    sudo pacman -S ydotool          # Wayland-native (recommended for Niri)
+setup
+    sudo pacman -S ydotool           Wayland-native (recommended for Niri)
     sudo systemctl enable --now ydotool
-    sudo usermod -aG input $USER    # log out and back in after this
+    sudo usermod -aG input $USER    log out and back in after this
 
-    OR for X11/XWayland only:
+    for X11/XWayland only:
     sudo pacman -S xdotool
 
-Usage:
+how to use
     python3 humantype.py
     python3 humantype.py --wpm 80 --error-rate 0.05
     python3 humantype.py --wpm 60 --error-rate 0.02 --text "Hello world"
@@ -23,8 +20,6 @@ import shutil
 import subprocess
 import time
 import sys
-
-# ── Backend detection ────────────────────────────────────────────────────────
 
 def detect_backend() -> str:
     if shutil.which('ydotool'):
@@ -40,7 +35,6 @@ def detect_backend() -> str:
 BACKEND = detect_backend()
 
 def send_char(ch: str) -> None:
-    """Send a single character via the active backend."""
     if BACKEND == 'ydotool':
         subprocess.run(['ydotool', 'type', '--', ch],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -56,7 +50,6 @@ def send_backspace() -> None:
         subprocess.run(['xdotool', 'key', 'BackSpace'],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-# ── QWERTY adjacency map ─────────────────────────────────────────────────────
 
 ADJACENCY: dict[str, str] = {
     'a': 'sqwz', 'b': 'vghn', 'c': 'xdfv', 'd': 'serfcx', 'e': 'wrsdf',
@@ -76,7 +69,6 @@ def adjacent_char(ch: str) -> str:
     typo = random.choice(neighbors)
     return typo.upper() if ch.isupper() else typo
 
-# ── Core typing logic ────────────────────────────────────────────────────────
 
 def wpm_to_delay(wpm: int) -> float:
     return 60.0 / (wpm * 5)
@@ -95,7 +87,6 @@ def type_text(text: str, wpm: int, error_rate: float, countdown: int = 3) -> Non
     while i < len(text):
         ch = text[i]
 
-        # ── Typo injection ───────────────────────────────────────────────────
         if ch.isalpha() and random.random() < error_rate:
             typo_type = random.choice(['adjacent', 'double', 'swap'])
 
@@ -124,7 +115,7 @@ def type_text(text: str, wpm: int, error_rate: float, countdown: int = 3) -> Non
                 send_backspace()
                 time.sleep(base_delay * random.uniform(1.0, 1.8))
 
-        # ── Correct character ────────────────────────────────────────────────
+        # right char
         send_char(ch)
 
         if ch in ' \n':
@@ -144,7 +135,6 @@ def type_text(text: str, wpm: int, error_rate: float, countdown: int = 3) -> Non
 
 
 def get_multiline_input() -> str:
-    """Read multiline text from stdin until user types END on its own line."""
     print("Paste or type your text below.")
     print("When done, press Enter then type END on a new line and press Enter:\n")
     lines = []
@@ -159,56 +149,56 @@ def get_multiline_input() -> str:
     return '\n'.join(lines)
 
 
+def prompt_int(msg: str, default: int, lo: int, hi: int) -> int:
+    while True:
+        raw = input(f"  {msg} [{default}]: ").strip()
+        if raw == '':
+            return default
+        try:
+            val = int(raw)
+            if lo <= val <= hi:
+                return val
+            print(f"    x Enter a number between {lo} and {hi}.")
+        except ValueError:
+            print("    x Please enter a whole number.")
+
+def prompt_float(msg: str, default: float, lo: float, hi: float) -> float:
+    while True:
+        raw = input(f"  {msg} [{default}]: ").strip()
+        if raw == '':
+            return default
+        try:
+            val = float(raw)
+            if lo <= val <= hi:
+                return val
+            print(f"    x Enter a number between {lo} and {hi}.")
+        except ValueError:
+            print("    x Please enter a number.")
+
 def main():
-    parser = argparse.ArgumentParser(
-        description='Type text at a target WPM with realistic typos.',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python3 humantype.py
-  python3 humantype.py --wpm 90 --error-rate 0.04
-  python3 humantype.py --wpm 60 --error-rate 0.0 --text "No typos please"
-  python3 humantype.py --countdown 5
-        """
-    )
-    parser.add_argument('--wpm', type=int, default=70,
-                        help='Typing speed in words per minute (default: 70)')
-    parser.add_argument('--error-rate', type=float, default=0.03,
-                        help='Fraction of chars that trigger a typo, e.g. 0.05 = 5%% (default: 0.03)')
-    parser.add_argument('--text', type=str, default=None,
-                        help='Text to type (skips interactive prompt)')
-    parser.add_argument('--countdown', type=int, default=3,
-                        help='Seconds to count down before typing starts (default: 3)')
-    args = parser.parse_args()
+    print("━" * 50)
+    print("  humantype -- human-like autotyper")
+    print("━" * 50)
 
-    # Validate
-    if args.wpm < 1 or args.wpm > 300:
-        print("Error: --wpm must be between 1 and 300")
-        sys.exit(1)
-    if not (0.0 <= args.error_rate <= 1.0):
-        print("Error: --error-rate must be between 0.0 and 1.0")
-        sys.exit(1)
+    wpm        = prompt_int  ("WPM (1-300)",          70,  1,   300)
+    error_pct  = prompt_float("Error rate % (0-100)", 3.0, 0.0, 100.0)
+    error_rate = error_pct / 100.0
 
-    # Get text
-    if args.text:
-        text = args.text
-    else:
-        text = get_multiline_input()
+    text = get_multiline_input()
 
     if not text.strip():
         print("No text provided. Exiting.")
         sys.exit(0)
 
     print(f"\n{'─'*50}")
-    print(f"  WPM:        {args.wpm}")
-    print(f"  Error rate: {args.error_rate*100:.1f}%")
+    print(f"  WPM:        {wpm}")
+    print(f"  Error rate: {error_pct:.1f}%")
     print(f"  Characters: {len(text)}")
     print(f"{'─'*50}")
     print("  Click where you want to type, then wait for the countdown.")
     print(f"{'─'*50}")
 
-    type_text(text, wpm=args.wpm, error_rate=args.error_rate, countdown=args.countdown)
-
+    type_text(text, wpm=wpm, error_rate=error_rate, countdown=3)
 
 if __name__ == '__main__':
     main()
