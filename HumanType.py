@@ -1,41 +1,62 @@
 #!/usr/bin/env python3
 """
-setup
-    sudo pacman -S ydotool           Wayland-native (recommended for Niri)
-    sudo systemctl enable --now ydotool
-    sudo usermod -aG input $USER    log out and back in after this
+ Linux (CachyOS/Arch)
+    sudo pacman -S ydotool
+    sudo systemctl --user enable --now ydotool
+    sudo usermod -aG input $USER
+    (log out and back in after usermod)
 
-    for X11/XWayland only:
-    sudo pacman -S xdotool
+ macOS 
+    brew install cliclick
+    then: System Settings → Privacy & Security → Accessibility
+    → grant Terminal (or your terminal app) access
 
-how to use
+━━ Usage 
     python3 humantype.py
-    python3 humantype.py --wpm 80 --error-rate 0.05
-    python3 humantype.py --wpm 60 --error-rate 0.02 --text "Hello world"
 """
 
-import argparse
+import platform
 import random
 import shutil
 import subprocess
 import time
 import sys
-
+OS = platform.system()
 def detect_backend() -> str:
-    if shutil.which('ydotool'):
-        return 'ydotool'
-    if shutil.which('xdotool'):
-        return 'xdotool'
-    print("Error: no typing backend found.")
-    print("Install one of:")
-    print("  sudo pacman -S ydotool   # Wayland-native (recommended)")
-    print("  sudo pacman -S xdotool   # X11/XWayland only")
-    sys.exit(1)
-
+    if OS == 'Darwin':
+        if shutil.which('cliclick'):
+            return 'cliclick'
+        try:
+            import pynput
+            return 'pynput'
+        except ImportError:
+            print("Error: no typing backend found.")
+            print("  brew install cliclick")
+            print("  pip install pynput")
+            sys.exit(1)
+    else:  # Linux
+        if shutil.which('ydotool'):
+            return 'ydotool'
+        if shutil.which('xdotool'):
+            return 'xdotool'
+        print("Error: no typing backend found.")
+        print("  sudo pacman -S ydotool   # Wayland-native (recommended)")
+        print("  sudo pacman -S xdotool   # X11/XWayland only")
+        sys.exit(1)
 BACKEND = detect_backend()
 
+if BACKEND == 'pynput':
+    from pynput.keyboard import Key, Controller
+    _kb = Controller()
+
+
 def send_char(ch: str) -> None:
-    if BACKEND == 'ydotool':
+    if BACKEND == 'cliclick':
+        subprocess.run(['cliclick', f't:{ch}'],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif BACKEND == 'pynput':
+        _kb.type(ch)
+    elif BACKEND == 'ydotool':
         subprocess.run(['ydotool', 'type', '--', ch],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
@@ -43,7 +64,13 @@ def send_char(ch: str) -> None:
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def send_backspace() -> None:
-    if BACKEND == 'ydotool':
+    if BACKEND == 'cliclick':
+        subprocess.run(['cliclick', 'kp:delete'],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif BACKEND == 'pynput':
+        _kb.press(Key.backspace)
+        _kb.release(Key.backspace)
+    elif BACKEND == 'ydotool':
         subprocess.run(['ydotool', 'key', '14:1', '14:0'],   # keycode 14 = BackSpace
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
