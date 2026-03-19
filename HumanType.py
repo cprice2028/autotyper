@@ -65,7 +65,9 @@ def send_char(ch: str) -> None:
 
 def send_backspace() -> None:
     if BACKEND == 'cliclick':
-        subprocess.run(['cliclick', 'kp:delete'],
+        # On macOS, key code 51 is the standard Backspace/Delete key.
+        # Using osascript here is more reliable for correction than cliclick kp:delete.
+        subprocess.run(['osascript', '-e', 'tell application "System Events" to key code 51'],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     elif BACKEND == 'pynput':
         _kb.press(Key.backspace)
@@ -143,10 +145,6 @@ def type_text(text: str, wpm: int, error_rate: float, countdown: int = 3) -> Non
                 next_ch = text[i + 1]
                 send_char(next_ch)
                 time.sleep(min_delay * burst_speed * random.uniform(0.5, 0.9))
-                send_char(ch)
-                time.sleep(min_delay * burst_speed * random.uniform(1.0, 2.0))
-                send_backspace()
-                time.sleep(min_delay * burst_speed * 0.4)
                 send_backspace()
                 time.sleep(min_delay * burst_speed * random.uniform(1.0, 1.8))
                 error_cooldown = random.randint(3, 8)
