@@ -24,6 +24,7 @@ import sys
 import tty
 import termios
 import os
+import readline
 OS = platform.system()
 def detect_backend() -> str:
     if OS == 'Darwin':
@@ -171,24 +172,14 @@ def type_text(text: str, wpm: int, error_rate: float, countdown: int = 3) -> Non
     print("\n✓  Done.")
 
 
-def get_multiline_input() -> str:
-    print("Paste or type your text below.")
-    print("When done, press Enter then type END on a new line and press Enter:\n")
-    lines = []
-    while True:
-        try:
-            line = input()
-        except EOFError:
-            break
-        if line.strip() == 'END':
-            break
-        lines.append(line)
-    return '\n'.join(lines)
-
+import readline 
 
 def prompt_int(msg: str, default: int, lo: int, hi: int) -> int:
     while True:
-        raw = input(f"  {msg} [{default}]: ").strip()
+        try:
+            raw = input(f"  {msg} [{default}]: ").strip()
+        except EOFError:
+            return default
         if raw == '':
             return default
         try:
@@ -201,7 +192,10 @@ def prompt_int(msg: str, default: int, lo: int, hi: int) -> int:
 
 def prompt_float(msg: str, default: float, lo: float, hi: float) -> float:
     while True:
-        raw = input(f"  {msg} [{default}]: ").strip()
+        try:
+            raw = input(f"  {msg} [{default}]: ").strip()
+        except EOFError:
+            return default
         if raw == '':
             return default
         try:
@@ -212,6 +206,19 @@ def prompt_float(msg: str, default: float, lo: float, hi: float) -> float:
         except ValueError:
             print("    x Please enter a number.")
 
+def get_multiline_input() -> str:
+    print("Paste or type your text below.")
+    print("When done, type END on a new line and press Enter:\n")
+    lines = []
+    while True:
+        try:
+            line = input()
+        except EOFError:
+            break
+        if line.strip() == 'END':
+            break
+        lines.append(line)
+    return '\n'.join(lines)
 def main():
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
