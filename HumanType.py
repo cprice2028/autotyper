@@ -216,6 +216,7 @@ def main():
 
     wpm        = prompt_int  ("WPM (1-300)",          70,  1,   300)
     error_pct  = prompt_float("Error rate % (0-100)", 3.0, 0.0, 100.0)
+    countdown  = prompt_int  ("Start delay seconds (0-60)", 3, 0, 60)
     error_rate = error_pct / 100.0
 
     text = get_multiline_input()
@@ -227,12 +228,13 @@ def main():
     print(f"\n{'─'*50}")
     print(f"  WPM:        {wpm}")
     print(f"  Error rate: {error_pct:.1f}%")
+    print(f"  Start in:   {countdown}s")
     print(f"  Characters: {len(text)}")
     print(f"{'─'*50}")
     print("  Click where you want to type, then wait for the countdown.")
     print(f"{'─'*50}")
 
-    type_text(text, wpm=wpm, error_rate=error_rate, countdown=3)
+    type_text(text, wpm=wpm, error_rate=error_rate, countdown=countdown)
 
 if __name__ == '__main__':
     main()
